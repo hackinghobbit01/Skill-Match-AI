@@ -1,0 +1,43 @@
+services:
+  # ==========================================================
+  # Backend API Web Service (Docker container with Puppeteer)
+  # ==========================================================
+  - type: web
+    name: skillmatch-backend
+    env: docker
+    plan: free
+    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: ./Backend
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GOOGLE_GENAI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: CLIENT_URL
+        sync: false
+
+  # ==========================================================
+  # Frontend Static Site (React + Vite SPA)
+  # ==========================================================
+  - type: web
+    name: skillmatch-frontend
+    runtime: static
+    rootDir: Frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false

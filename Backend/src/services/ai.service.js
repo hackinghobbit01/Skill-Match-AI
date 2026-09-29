@@ -3,9 +3,17 @@ const { z } = require("zod");
 const { zodToJsonSchema } = require("zod-to-json-schema");
 const puppeteer = require("puppeteer");
 
-const ai = new GoogleGenAI({
-    apiKey: process.env.GOOGLE_GENAI_API_KEY
-});
+let aiClient = null;
+function getAiClient() {
+    if (!aiClient) {
+        const apiKey = process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            throw new Error("GOOGLE_GENAI_API_KEY or GEMINI_API_KEY is not defined in environment variables.");
+        }
+        aiClient = new GoogleGenAI({ apiKey });
+    }
+    return aiClient;
+}
 
 const interviewReportSchema = z.object({
     matchScore: z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job description"),
@@ -58,8 +66,11 @@ Job Description:
 ${jobDescription}
 `;
 
+    const ai = getAiClient();
+    const model = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
+
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: model,
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -72,36 +83,41 @@ ${jobDescription}
 
 
 async function generatePdfFromHtml(htmlContent) {
+    let browser = null;
+    try {
+        browser = await puppeteer.launch({
+            headless: true,
+            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+            args: [
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu"
+            ]
+        });
 
-    const browser = await puppeteer.launch({
-        headless: true,
-        args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu"
-        ]
-    });
+        const page = await browser.newPage();
 
-    const page = await browser.newPage();
+        await page.setContent(htmlContent, {
+            waitUntil: "networkidle0"
+        });
 
-    await page.setContent(htmlContent, {
-        waitUntil: "networkidle0"
-    });
+        const pdfBuffer = await page.pdf({
+            format: "A4",
+            margin: {
+                top: "20mm",
+                bottom: "20mm",
+                left: "15mm",
+                right: "15mm"
+            }
+        });
 
-    const pdfBuffer = await page.pdf({
-        format: "A4",
-        margin: {
-            top: "20mm",
-            bottom: "20mm",
-            left: "15mm",
-            right: "15mm"
+        return pdfBuffer;
+    } finally {
+        if (browser) {
+            await browser.close();
         }
-    });
-
-    await browser.close();
-
-    return pdfBuffer;
+    }
 }
 
 async function generateResumePdf({ resume, selfDescription, jobDescription }) {
@@ -128,8 +144,11 @@ The resume should:
 - Sound natural, not AI-generated.
 `;
 
+    const ai = getAiClient();
+    const model = process.env.GEMINI_MODEL || "gemini-3-flash-preview";
+
     const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: model,
         contents: prompt,
         config: {
             responseMimeType: "application/json",

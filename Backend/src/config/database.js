@@ -3,14 +3,16 @@ const mongoose = require("mongoose")
 
 
 async function connectToDB() {
-
     try {
-        await mongoose.connect(process.env.MONGO_URI)
-
-        console.log("Connected to Database")
-    }
-    catch (err) {
-        console.log(err)
+        const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+        if (!uri) {
+            console.error("Error: Neither MONGO_URI nor MONGODB_URI environment variable is defined.");
+            return;
+        }
+        await mongoose.connect(uri);
+        console.log("Connected to Database");
+    } catch (err) {
+        console.error("Database connection error:", err);
     }
 }
 
