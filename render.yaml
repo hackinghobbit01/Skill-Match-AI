@@ -4,10 +4,11 @@ services:
   # ==========================================================
   - type: web
     name: skillmatch-backend
-    env: docker
+    runtime: docker
+    rootDir: Backend
+    dockerfilePath: Dockerfile
+    dockerContext: .
     plan: free
-    dockerfilePath: ./Backend/Dockerfile
-    dockerContext: ./Backend
     healthCheckPath: /health
     envVars:
       - key: PORT
