@@ -147,11 +147,4 @@ GEMINI_API_KEY=your_gemini_api_key
 
 ---
 
-## 👨‍💻 Author
-
-**Mayank Chaudhary**  
-B.Tech, Electrical Engineering  
-National Institute of Technology Delhi
-
----
 
